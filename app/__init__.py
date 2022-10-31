@@ -14,17 +14,19 @@ def create_app():
     
     #configuration variables
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    # telling app where the database lives:
+    #telling app where the database lives:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+psycopg2://postgres:postgres@localhost:5432/breakfasts_development'
+    #will show SQLAlchemy under the hood
+    app.config['SQLALCHEMY_ECHO'] = True
 
     #connect database to app:
     database.init_app(app)
     migrate.init_app(app, database)
 
-    # import the model
+    #imports the model Breakfast into the project so migrations can pick it up and add to database
     from app.models.breakfast import Breakfast
 
-# import inside the body of the function bc that's how it's done in Flask
+    #import inside the body of the function bc that's how it's done in Flask
     from .routes.breakfast import breakfast_bp
     app.register_blueprint(breakfast_bp)
 

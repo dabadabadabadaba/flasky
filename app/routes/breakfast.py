@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request # request is an object that Flask creates for us. It'll populate with the request body.
+from flask import Blueprint, jsonify, request, abort, make_response # request is an object that Flask creates for us. It'll populate with the request body.
 from app import database # now we can interact with the database
 from app.models.breakfast import Breakfast # now we have access to the model in this file
 
@@ -33,11 +33,11 @@ def get_all_breakfasts():
     #we can't turn classes into JSON but you can turn lists and dicts into JSON
     #this function will turn data into JSON
     result = []  # adding a dictionary of breakfast items into a list
-    all_breakfasts = Breakfast.query.all() # we're essentiall running a SELECT * on the back end 
+    all_breakfasts = Breakfast.query.all() # we're essentially running a SELECT * on the back end 
     for item in all_breakfasts: # this used to be hardcorded to the list "breakfast_items"
-        item_dict = {"id": item.id, "name": item.name, # generate a dictionary
-                    "rating":item.rating,"prep_time": item.prep_time}
-        result.append(item_dict)
+        # item_dict = {"id": item.id, "name": item.name, # generate a dictionary
+        #             "rating":item.rating,"prep_time": item.prep_time}
+        result.append(item.to_dict()) # use our method 'to_dict()'
 
     return jsonify(result), 200 # return the data as JSON
 
@@ -45,8 +45,9 @@ def get_all_breakfasts():
 @breakfast_bp.route('/<breakfast_id>', methods=['GET'])
 #endpoint (breakfast_id) in decorator and parameter in the function have to be named exactly the same!
 def get_one_breakfast(breakfast_id):
-    #find the breakfast that matches the breakfast_id that was passed
-    
+    #find the breakfast that matches the breakfast_id that was passed  
+   
+    '''
     #try casting breakfast_id into an integer
     try:
         breakfast_id = int(breakfast_id)
@@ -55,25 +56,32 @@ def get_one_breakfast(breakfast_id):
         return jsonify({"msg": f"invalid data type:{breakfast_id}"}), 400
     
     chosen_breakfast = None
-    breakfast_id = int(breakfast_id)
-    for breakfast in breakfast_items:
-        if breakfast.id == breakfast_id:
-            chosen_breakfast = breakfast
+    # breakfast_id = int(breakfast_id)
+    # for breakfast in breakfast_items:
+    #     if breakfast.id == breakfast_id:
+    #         chosen_breakfast = breakfast
+
+    # instead of querying "all", we use "get" which is a "SELECT * WHERE id ="
+    chosen_breakfast = Breakfast.query.get(breakfast_id) 
+
     # check if chosen_breakfast is still None before we construct our dictionary message
     if chosen_breakfast is None:
         return jsonify({"msg": f"Could not find breakfast item with id: {breakfast_id}"}), 404
     
-    #create a dictionary with the found breakfast
-    return_breakfast = {
-        "id": chosen_breakfast.id,
-        "name": chosen_breakfast.name,
-        "rating": chosen_breakfast.rating,
-        "prep_time": chosen_breakfast.prep_time
-    }
+    #don't need this code that makes a dictionary because now I can use "to_dict" in the return line
+    # #create a dictionary with the found breakfast
+    # return_breakfast = {
+    #     "id": chosen_breakfast.id,
+    #     "name": chosen_breakfast.name,
+    #     "rating": chosen_breakfast.rating,
+    #     "prep_time": chosen_breakfast.prep_time
+    # }
     #technically you don't need to jsonify for a single breakfast item 
     # (you'd get the same output bc the dict is already in json format)
     #the reason we're using it is to be consistent bc we're using it elsewhere, this is coding best practice
-    return jsonify(return_breakfast), 200 
+    '''
+    chosen_breakfast = get_breakfast_from_id(breakfast_id) # all of the old code above has been turned into a helper function
+    return jsonify(chosen_breakfast.to_dict()), 200 
 
 #route after connecting to database
 @breakfast_bp.route('', methods=['POST'])
@@ -90,3 +98,49 @@ def create_one_breakfast():
     database.session.commit()
 
     return jsonify({"msg":f"Successfully created Breakfast with id={new_breakfast}"}), 201
+
+#needs a breakfast_id because we need to know which one to update
+@breakfast_bp.route('/<breakfast_id>', methods=['PUT']) # using PUT because we're requiring all of the fields from the user
+def update_one_breakfast(breakfast_id):
+    # there's a function already that gets one breakfast and we could theoretically just copy and paste that code from above
+    # but, whenever we copy and paste, that's a sign that we can use a helper function!
+    update_breakfast = get_breakfast_from_id(breakfast_id)
+    
+    request_body = request.get_json()
+
+    try:
+        update_breakfast.name = request_body["name"]
+        update_breakfast.rating = request_body["rating"]
+        update_breakfast.prep_time = request_body["prep_time"]
+    except KeyError:
+        return jsonify({"msg": "Missing required data"}), 400
+    
+    database.session.commit()
+
+    return jsonify({"msg": f"Successfully updated breakfast with id {update_breakfast.id}"}), 200
+
+@breakfast_bp.route('/<breakfast_id>', methods=['DELETE'])
+def delete_one_breakfast(breakfast_id):
+    breakfast_to_delete = get_breakfast_from_id(breakfast_id)
+
+    database.session.delete(breakfast_to_delete)
+    database.session.commit()
+
+    return jsonify({"msg": f"Successfully deleted breakfast with id {breakfast_to_delete}"}), 200
+
+#helper function 
+def get_breakfast_from_id(breakfast_id):
+    try:
+        breakfast_id = int(breakfast_id)
+    except ValueError:
+        # 'abort' needs 'make_response' so both have to be imported at the top of the file
+        # this makes sure our helper function returns a breakfast instead of just a response that also needs to be returned
+        return abort(make_response({"msg": f"invalid data type:{breakfast_id}"}, 400)) 
+
+    chosen_breakfast = Breakfast.query.get(breakfast_id) 
+
+    if chosen_breakfast is None:
+        return abort(make_response({"msg": f"Could not find breakfast item with id: {breakfast_id}"}, 404))
+    
+    return chosen_breakfast
+

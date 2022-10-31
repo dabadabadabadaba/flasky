@@ -8,3 +8,11 @@ class Breakfast(database.Model):
     rating = database.Column(database.Float)
     prep_time = database.Column(database.Integer)
 
+    #this will produce a dictionary and help refactor our code
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "rating": self.rating,
+            "prep_time": self.prep_time
+        }
