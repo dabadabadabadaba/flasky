@@ -32,7 +32,8 @@ breakfast_bp = Blueprint("breakfast", __name__, url_prefix="/breakfast") # initi
 def get_all_breakfasts():
     rating_query_value = request.args.get("rating") #pass in the key, whatever the key happens to be. Has to be a string. 
     # "args" is a dictionary and .get() is a method. using .get() will give us NONE if there's no rating
-    if rating_query_value is not None: # if there's a rating, make a query with that rating
+    if rating_query_value is not None: # if there's a rating, make a query with that rating. Check for NONE, rather than checking for falsey..
+        #..which makes sure we're not missing a valid value that is falsey
         breakfasts = Breakfast.query.filter_by(rating=rating_query_value) 
     else:
         breakfasts = Breakfast.query.all() #if there's no rating, get all breakfasts. we're essentially running a SELECT * on the back end 
@@ -148,4 +149,3 @@ def get_breakfast_from_id(breakfast_id):
         return abort(make_response({"msg": f"Could not find breakfast item with id: {breakfast_id}"}, 404))
     
     return chosen_breakfast
-
