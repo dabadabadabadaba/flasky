@@ -20,7 +20,7 @@ breakfast_items = [
     Breakfast(4, "oatmeal", 3, 10)
 ]
 '''
-#we're making a decision in the code below which is that all of the endpoints for this Blueprint will
+#we're making a decision in the "breakfast_bp" line below which is that all of the endpoints for this Blueprint will
 #start with "/breakfast" and will have potentially other things after it
 #Blueprint keeps track of all our endpoints (it's like a bucket we're putting the routes into)
 breakfast_bp = Blueprint("breakfast", __name__, url_prefix="/breakfast") # initializing our Blueprint
@@ -28,13 +28,18 @@ breakfast_bp = Blueprint("breakfast", __name__, url_prefix="/breakfast") # initi
 # FIRST ROUTE
 #decorator: takes whatever function after it, and wraps it into the breakfast blueprint route
 #When we try to run this route in Flask, it'll run this route
-@breakfast_bp.route('', methods=['GET'])
+@breakfast_bp.route('', methods=['GET']) #this function will turn data into JSON, we can't turn classes into JSON but you can turn lists and dicts into JSON
 def get_all_breakfasts():
-    #we can't turn classes into JSON but you can turn lists and dicts into JSON
-    #this function will turn data into JSON
+    rating_query_value = request.args.get("rating") #pass in the key, whatever the key happens to be. Has to be a string. 
+    # "args" is a dictionary and .get() is a method. using .get() will give us NONE if there's no rating
+    if rating_query_value is not None: # if there's a rating, make a query with that rating
+        breakfasts = Breakfast.query.filter_by(rating=rating_query_value) 
+    else:
+        breakfasts = Breakfast.query.all() #if there's no rating, get all breakfasts. we're essentially running a SELECT * on the back end 
+
     result = []  # adding a dictionary of breakfast items into a list
-    all_breakfasts = Breakfast.query.all() # we're essentially running a SELECT * on the back end 
-    for item in all_breakfasts: # this used to be hardcorded to the list "breakfast_items"
+    
+    for item in breakfasts: # this used to be hardcorded to the list "breakfast_items"
         # item_dict = {"id": item.id, "name": item.name, # generate a dictionary
         #             "rating":item.rating,"prep_time": item.prep_time}
         result.append(item.to_dict()) # use our method 'to_dict()'
@@ -83,7 +88,7 @@ def get_one_breakfast(breakfast_id):
     chosen_breakfast = get_breakfast_from_id(breakfast_id) # all of the old code above has been turned into a helper function
     return jsonify(chosen_breakfast.to_dict()), 200 
 
-#route after connecting to database
+#THIRD route after connecting to database
 @breakfast_bp.route('', methods=['POST'])
 def create_one_breakfast():
     request_body = request.get_json()
@@ -94,7 +99,7 @@ def create_one_breakfast():
         prep_time=request_body['prep_time']
     )
 
-    database.session.add(new_breakfast)
+    database.session.add(new_breakfast) # .add because it's new data that is being added
     database.session.commit()
 
     return jsonify({"msg":f"Successfully created Breakfast with id={new_breakfast}"}), 201
@@ -106,7 +111,7 @@ def update_one_breakfast(breakfast_id):
     # but, whenever we copy and paste, that's a sign that we can use a helper function!
     update_breakfast = get_breakfast_from_id(breakfast_id)
     
-    request_body = request.get_json()
+    request_body = request.get_json() # changing the json in request body into something Python can read
 
     try:
         update_breakfast.name = request_body["name"]
@@ -115,7 +120,7 @@ def update_one_breakfast(breakfast_id):
     except KeyError:
         return jsonify({"msg": "Missing required data"}), 400
     
-    database.session.commit()
+    database.session.commit() # only "commit" because the data already exists
 
     return jsonify({"msg": f"Successfully updated breakfast with id {update_breakfast.id}"}), 200
 
