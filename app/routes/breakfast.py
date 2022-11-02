@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, abort, make_response # request is an object that Flask creates for us. It'll populate with the request body.
-from app import database # now we can interact with the database
+from app import db # now we can interact with the database
 from app.models.breakfast import Breakfast # now we have access to the model in this file
 
 
@@ -100,10 +100,10 @@ def create_one_breakfast():
         prep_time=request_body['prep_time']
     )
 
-    database.session.add(new_breakfast) # .add because it's new data that is being added
-    database.session.commit()
+    db.session.add(new_breakfast) # .add because it's new data that is being added
+    db.session.commit()
 
-    return jsonify({"msg":f"Successfully created Breakfast with id={new_breakfast}"}), 201
+    return jsonify({"msg":f"Successfully created Breakfast with id# {new_breakfast.id}"}), 201
 
 #needs a breakfast_id because we need to know which one to update
 @breakfast_bp.route('/<breakfast_id>', methods=['PUT']) # using PUT because we're requiring all of the fields from the user
@@ -121,7 +121,7 @@ def update_one_breakfast(breakfast_id):
     except KeyError:
         return jsonify({"msg": "Missing required data"}), 400
     
-    database.session.commit() # only "commit" because the data already exists
+    db.session.commit() # only "commit" because the data already exists
 
     return jsonify({"msg": f"Successfully updated breakfast with id {update_breakfast.id}"}), 200
 
@@ -129,8 +129,8 @@ def update_one_breakfast(breakfast_id):
 def delete_one_breakfast(breakfast_id):
     breakfast_to_delete = get_breakfast_from_id(breakfast_id)
 
-    database.session.delete(breakfast_to_delete)
-    database.session.commit()
+    db.session.delete(breakfast_to_delete)
+    db.session.commit()
 
     return jsonify({"msg": f"Successfully deleted breakfast with id {breakfast_to_delete}"}), 200
 

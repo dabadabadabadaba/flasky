@@ -5,12 +5,12 @@ from dotenv import load_dotenv # allows us to load variables from dotenv environ
 import os #allows us to pull things out of our environment
 
 #setting up the database, setting up initial objects for us to use later in our app
-database = SQLAlchemy()
+db = SQLAlchemy()
 migrate = Migrate()
 load_dotenv() # this calls variables from .env
 
 
-def create_app(testing = None): # "testing = None" will allow us to set up our app in a testing format
+def create_app(testing=None): # "testing=None" will allow us to set up our app in a testing format
     # __name__ stores the name of the module we're in. 
     # Flask is doing something with it under the hood and we don't really have to worry about why.
     app = Flask(__name__)
@@ -24,17 +24,18 @@ def create_app(testing = None): # "testing = None" will allow us to set up our a
         #telling app where the database lives:
         app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI') # grabbing the variable out of the .env, this one IS in quotes
     else:
-        app.config['TESTING'] = True
+        app.config['TESTING'] = True # this doesn't refer to the testing paramter in the create_app function
         app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('TEST_SQLALCHEMY_DATABASE_URI')
 
     #connect database to app:
-    database.init_app(app)
-    migrate.init_app(app, database)
+    db.init_app(app)
+    migrate.init_app(app, db)
 
     #imports the model Breakfast into the project so migrations can pick it up and add to database
     from app.models.breakfast import Breakfast
 
-    #import inside the body of the function bc that's how it's done in Flask
+    #Register Blueprints here:
+    # import inside the body of the function bc that's how it's done in Flask
     from .routes.breakfast import breakfast_bp
     app.register_blueprint(breakfast_bp)
 
