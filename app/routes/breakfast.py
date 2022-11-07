@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, abort, make_response # request is an object that Flask creates for us. It'll populate with the request body.
 from app import db # now we can interact with the database
 from app.models.breakfast import Breakfast # now we have access to the model in this file
+from app.models.menu import Menu
 
 
 ''' old hardcoded Breakfasts
@@ -30,7 +31,7 @@ breakfast_bp = Blueprint("breakfast", __name__, url_prefix="/breakfast") # initi
 #When we try to run this route in Flask, it'll run this route
 @breakfast_bp.route('', methods=['GET']) #this function will turn data into JSON, we can't turn classes into JSON but you can turn lists and dicts into JSON
 def get_all_breakfasts():
-    rating_query_value = request.args.get("rating") #pass in the key, whatever the key happens to be. Has to be a string. 
+    rating_query_value = request.args.get("rating") #this looks at the key "rating" and returns the value that follows the key in the URL
     # "args" is a dictionary and .get() is a method. using .get() will give us NONE if there's no rating
     if rating_query_value is not None: # if there's a rating, make a query with that rating. Check for NONE, rather than checking for falsey..
         #..which makes sure we're not missing a valid value that is falsey
@@ -86,7 +87,7 @@ def get_one_breakfast(breakfast_id):
     # (you'd get the same output bc the dict is already in json format)
     #the reason we're using it is to be consistent bc we're using it elsewhere, this is coding best practice
     '''
-    chosen_breakfast = get_breakfast_from_id(breakfast_id) # all of the old code above has been turned into a helper function
+    chosen_breakfast = get_model_from_id(Breakfast, breakfast_id) # all of the old code above has been turned into a helper function
     return jsonify(chosen_breakfast.to_dict()), 200 
 
 #THIRD route after connecting to database
@@ -94,11 +95,15 @@ def get_one_breakfast(breakfast_id):
 def create_one_breakfast():
     request_body = request.get_json()
 
-    new_breakfast = Breakfast(
-        name=request_body['name'],
-        rating=request_body['rating'],
-        prep_time=request_body['prep_time']
-    )
+    # REFACTOR
+    # # this logic will very likely be reused and it's more related to the Breakfast
+    # # instance and not the route. Makes more sense for it to live in the Breakfast model.
+    # new_breakfast = Breakfast(
+    #     name=request_body['name'],
+    #     rating=request_body['rating'],
+    #     prep_time=request_body['prep_time']
+    # )
+    new_breakfast = Breakfast.from_dict(request_body)
 
     db.session.add(new_breakfast) # .add because it's new data that is being added
     db.session.commit()
@@ -110,7 +115,7 @@ def create_one_breakfast():
 def update_one_breakfast(breakfast_id):
     # there's a function already that gets one breakfast and we could theoretically just copy and paste that code from above
     # but, whenever we copy and paste, that's a sign that we can use a helper function!
-    update_breakfast = get_breakfast_from_id(breakfast_id)
+    update_breakfast = get_model_from_id(Breakfast, breakfast_id)
     
     request_body = request.get_json() # changing the json in request body into something Python can read
 
@@ -127,25 +132,61 @@ def update_one_breakfast(breakfast_id):
 
 @breakfast_bp.route('/<breakfast_id>', methods=['DELETE'])
 def delete_one_breakfast(breakfast_id):
-    breakfast_to_delete = get_breakfast_from_id(breakfast_id)
+    breakfast_to_delete = get_model_from_id(Breakfast, breakfast_id)
 
     db.session.delete(breakfast_to_delete)
     db.session.commit()
 
     return jsonify({"msg": f"Successfully deleted breakfast with id {breakfast_to_delete}"}), 200
 
-#helper function 
-def get_breakfast_from_id(breakfast_id):
+@breakfast_bp.route("/<breakfast_id>/", methods=["PATCH"])
+def add_menu_to_breakfast(breakfast_id):
+    breakfast = get_model_from_id(Breakfast, breakfast_id)
+
+    request_body = request.get_json()
+
     try:
-        breakfast_id = int(breakfast_id)
+        menu_id = request_body["menu_id"]
+    except KeyError:
+        return jsonify({"msg": "Missing menu id"}), 400
+    
+    menu = get_model_from_id(Menu, menu_id)
+    breakfast.menu = menu
+
+    db.session.commit()
+    return jsonify({"msg":f"Successfully {breakfast.name} to {menu_id}"})
+
+#----------------------------------------------------
+#helper function REFACTOR:
+#it would be nice to use this for more than one model, so the refactor makes it generic
+def get_model_from_id(cls, model_id):
+    try:
+        model_id = int(model_id)
     except ValueError:
         # 'abort' needs 'make_response' so both have to be imported at the top of the file
         # this makes sure our helper function returns a breakfast instead of just a response that also needs to be returned
-        return abort(make_response({"msg": f"invalid data type:{breakfast_id}"}, 400)) 
+        return abort(make_response({"msg": f"Invalid id for model of type {cls.__name__}:{model_id}"}, 400)) 
 
-    chosen_breakfast = Breakfast.query.get(breakfast_id) 
+    chosen_object = cls.query.get(model_id) 
 
-    if chosen_breakfast is None:
-        return abort(make_response({"msg": f"Could not find breakfast item with id: {breakfast_id}"}, 404))
+    if chosen_object is None:
+        # cls.__name__ gives us the name of the class
+        return abort(make_response({"msg": f"Could not find {cls.__name__} item with id: {model_id}"}, 404))
     
-    return chosen_breakfast
+    return chosen_object
+
+# #helper function before refactor:
+# def get_breakfast_from_id(breakfast_id):
+#     try:
+#         breakfast_id = int(breakfast_id)
+#     except ValueError:
+#         # 'abort' needs 'make_response' so both have to be imported at the top of the file
+#         # this makes sure our helper function returns a breakfast instead of just a response that also needs to be returned
+#         return abort(make_response({"msg": f"invalid data type:{breakfast_id}"}, 400)) 
+
+#     chosen_breakfast = Breakfast.query.get(breakfast_id) 
+
+#     if chosen_breakfast is None:
+#         return abort(make_response({"msg": f"Could not find breakfast item with id: {breakfast_id}"}, 404))
+    
+#     return chosen_breakfast

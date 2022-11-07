@@ -25,7 +25,7 @@ def test_get_one_breakfast_with_populated_db_returns_breakfast_json(client, two_
         "prep_time" : 1
     }
 
-def test_post_one_breakfast_creates_breakfast_in_db(client, two_breakfasts):
+def test_create_one_breakfast_creates_breakfast_in_db(client, two_breakfasts):
     response = client.post("/breakfast", json={
         "name": "New Breakfast",
         "prep_time": 3,

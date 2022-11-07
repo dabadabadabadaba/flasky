@@ -31,12 +31,16 @@ def create_app(testing=None): # "testing=None" will allow us to set up our app i
     db.init_app(app)
     migrate.init_app(app, db)
 
-    #imports the model Breakfast into the project so migrations can pick it up and add to database
+    #Import models into the project so Flask migrations can pick it up and add to database
     from app.models.breakfast import Breakfast
-
-    #Register Blueprints here:
-    # import inside the body of the function bc that's how it's done in Flask
+    from app.models.menu import Menu
     from .routes.breakfast import breakfast_bp
+    from .routes.menu import menu_bp
+
+    #Register Blueprints for here:
+    # import inside the body of the function bc that's how it's done in Flask
     app.register_blueprint(breakfast_bp)
+    app.register_blueprint(menu_bp)
+
 
     return app
