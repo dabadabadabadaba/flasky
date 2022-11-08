@@ -154,7 +154,7 @@ def add_menu_to_breakfast(breakfast_id):
     breakfast.menu = menu
 
     db.session.commit()
-    return jsonify({"msg":f"Successfully {breakfast.name} to {menu_id}"})
+    return jsonify({"msg":f"Successfully added {breakfast.name} to {menu_id}"})
 
 #----------------------------------------------------
 #helper function REFACTOR:
